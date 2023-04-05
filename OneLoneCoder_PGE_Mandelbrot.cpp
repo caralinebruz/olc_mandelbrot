@@ -87,25 +87,26 @@ public:
 		// MS Specific - see std::aligned_alloc for others
 		// pFractal = (int*)_aligned_malloc(size_t(ScreenWidth()) * size_t(ScreenHeight()) * sizeof(int), 64);
 
-		InitialiseThreadPool();
+		// InitialiseThreadPool();
 		return true;
 	}
 
 	bool OnUserDestroy() override
 	{
 		// Stop Worker threads
-		for (int i = 0; i < nMaxThreads; i++)
-		{
-			workers[i].alive = false;		 // Allow thread exit
-			workers[i].cvStart.notify_one(); // Fake starting gun
-		}
+		// for (int i = 0; i < nMaxThreads; i++)
+		// {
+		// 	workers[i].alive = false;		 // Allow thread exit
+		// 	workers[i].cvStart.notify_one(); // Fake starting gun
+		// }
 
-		// Clean up worker threads
-		for (int i = 0; i < nMaxThreads; i++)
-			workers[i].thread.join();
+		// // Clean up worker threads
+		// for (int i = 0; i < nMaxThreads; i++)
+		// 	workers[i].thread.join();
 
 		// Clean up memory
-		_aligned_free(pFractal);
+		// _aligned_free(pFractal);
+		free(pFractal);
 		return true;
 	}
 
@@ -430,38 +431,38 @@ public:
 	// 	}
 	// };
 
-	WorkerThread workers[nMaxThreads];
-	static std::atomic<int> nWorkerComplete;
+	// WorkerThread workers[nMaxThreads];
+	// static std::atomic<int> nWorkerComplete;
 
-	void InitialiseThreadPool()
-	{
-		for (int i = 0; i < nMaxThreads; i++)
-		{
-			workers[i].alive = true;
-			workers[i].fractal = pFractal;
-			workers[i].screen_width = ScreenWidth();
-			workers[i].thread = std::thread(&WorkerThread::CreateFractal, &workers[i]);
-		}
-	}
+	// void InitialiseThreadPool()
+	// {
+	// 	for (int i = 0; i < nMaxThreads; i++)
+	// 	{
+	// 		workers[i].alive = true;
+	// 		workers[i].fractal = pFractal;
+	// 		workers[i].screen_width = ScreenWidth();
+	// 		workers[i].thread = std::thread(&WorkerThread::CreateFractal, &workers[i]);
+	// 	}
+	// }
 
-	void CreateFractalThreadPool(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
-	{
-		int nSectionWidth = (pix_br.x - pix_tl.x) / nMaxThreads;
-		double dFractalWidth = (frac_br.x - frac_tl.x) / double(nMaxThreads);
-		nWorkerComplete = 0;
+	// void CreateFractalThreadPool(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
+	// {
+	// 	int nSectionWidth = (pix_br.x - pix_tl.x) / nMaxThreads;
+	// 	double dFractalWidth = (frac_br.x - frac_tl.x) / double(nMaxThreads);
+	// 	nWorkerComplete = 0;
 
-		for (size_t i = 0; i < nMaxThreads; i++)
-			workers[i].Start(
-				olc::vi2d(pix_tl.x + nSectionWidth * i, pix_tl.y), 
-				olc::vi2d(pix_tl.x + nSectionWidth * (i + 1), pix_br.y), 
-				olc::vd2d(frac_tl.x + dFractalWidth * double(i), frac_tl.y), 
-				olc::vd2d(frac_tl.x + dFractalWidth * double(i + 1), frac_br.y), 
-				iterations);
+	// 	for (size_t i = 0; i < nMaxThreads; i++)
+	// 		workers[i].Start(
+	// 			olc::vi2d(pix_tl.x + nSectionWidth * i, pix_tl.y), 
+	// 			olc::vi2d(pix_tl.x + nSectionWidth * (i + 1), pix_br.y), 
+	// 			olc::vd2d(frac_tl.x + dFractalWidth * double(i), frac_tl.y), 
+	// 			olc::vd2d(frac_tl.x + dFractalWidth * double(i + 1), frac_br.y), 
+	// 			iterations);
 
 
-		while (nWorkerComplete < nMaxThreads) // Wait for all workers to complete
-		{ }			
-	}
+	// 	while (nWorkerComplete < nMaxThreads) // Wait for all workers to complete
+	// 	{ }			
+	// }
 
 
 	bool OnUserUpdate(float fElapsedTime) override
@@ -581,7 +582,7 @@ public:
 	}
 };
 
-std::atomic<int> olcFractalExplorer::nWorkerComplete = 0;
+// std::atomic<int> olcFractalExplorer::nWorkerComplete = 0;
 
 int main()
 {
