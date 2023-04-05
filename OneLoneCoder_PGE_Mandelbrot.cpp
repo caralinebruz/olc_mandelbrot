@@ -225,210 +225,210 @@ public:
 		}
 	}
 
-	// Method 4) - Use AVX2 Vector co-processor to handle 4 fractal locations at once
-	void CreateFractalIntrinsics(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
-	{
-		double x_scale = (frac_br.x - frac_tl.x) / (double(pix_br.x) - double(pix_tl.x));
-		double y_scale = (frac_br.y - frac_tl.y) / (double(pix_br.y) - double(pix_tl.y));
+	// // Method 4) - Use AVX2 Vector co-processor to handle 4 fractal locations at once
+	// void CreateFractalIntrinsics(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
+	// {
+	// 	double x_scale = (frac_br.x - frac_tl.x) / (double(pix_br.x) - double(pix_tl.x));
+	// 	double y_scale = (frac_br.y - frac_tl.y) / (double(pix_br.y) - double(pix_tl.y));
 
-		double y_pos = frac_tl.y;
+	// 	double y_pos = frac_tl.y;
 
-		int y_offset = 0;
-		int row_size = ScreenWidth();
+	// 	int y_offset = 0;
+	// 	int row_size = ScreenWidth();
 
-		int x, y;
+	// 	int x, y;
 
-		__m256d _a, _b, _two, _four, _mask1;
-		__m256d _zr, _zi, _zr2, _zi2, _cr, _ci;
-		__m256d _x_pos_offsets, _x_pos, _x_scale, _x_jump;
-		__m256i _one, _c, _n, _iterations, _mask2;
+	// 	__m256d _a, _b, _two, _four, _mask1;
+	// 	__m256d _zr, _zi, _zr2, _zi2, _cr, _ci;
+	// 	__m256d _x_pos_offsets, _x_pos, _x_scale, _x_jump;
+	// 	__m256i _one, _c, _n, _iterations, _mask2;
 
-		_one = _mm256_set1_epi64x(1);
-		_two = _mm256_set1_pd(2.0);
-		_four = _mm256_set1_pd(4.0);
-		_iterations = _mm256_set1_epi64x(iterations);
+	// 	_one = _mm256_set1_epi64x(1);
+	// 	_two = _mm256_set1_pd(2.0);
+	// 	_four = _mm256_set1_pd(4.0);
+	// 	_iterations = _mm256_set1_epi64x(iterations);
 
-		_x_scale = _mm256_set1_pd(x_scale);
-		_x_jump = _mm256_set1_pd(x_scale * 4);
-		_x_pos_offsets = _mm256_set_pd(0, 1, 2, 3);
-		_x_pos_offsets = _mm256_mul_pd(_x_pos_offsets, _x_scale);
-
-
-		for (y = pix_tl.y; y < pix_br.y; y++)
-		{
-			// Reset x_position
-			_a = _mm256_set1_pd(frac_tl.x);
-			_x_pos = _mm256_add_pd(_a, _x_pos_offsets);
-
-			_ci = _mm256_set1_pd(y_pos);
-
-			for (x = pix_tl.x; x < pix_br.x; x += 4)
-			{
-				_cr = _x_pos;
-				_zr = _mm256_setzero_pd();
-				_zi = _mm256_setzero_pd();
-				_n = _mm256_setzero_si256();
+	// 	_x_scale = _mm256_set1_pd(x_scale);
+	// 	_x_jump = _mm256_set1_pd(x_scale * 4);
+	// 	_x_pos_offsets = _mm256_set_pd(0, 1, 2, 3);
+	// 	_x_pos_offsets = _mm256_mul_pd(_x_pos_offsets, _x_scale);
 
 
-			repeat:
-				_zr2 = _mm256_mul_pd(_zr, _zr);
-				_zi2 = _mm256_mul_pd(_zi, _zi);
-				_a = _mm256_sub_pd(_zr2, _zi2);
-				_a = _mm256_add_pd(_a, _cr);
-				_b = _mm256_mul_pd(_zr, _zi);
-				_b = _mm256_fmadd_pd(_b, _two, _ci);
-				_zr = _a;
-				_zi = _b;
-				_a = _mm256_add_pd(_zr2, _zi2);
-				_mask1 = _mm256_cmp_pd(_a, _four, _CMP_LT_OQ);
-				_mask2 = _mm256_cmpgt_epi64(_iterations, _n);
-				_mask2 = _mm256_and_si256(_mask2, _mm256_castpd_si256(_mask1));
-				_c = _mm256_and_si256(_one, _mask2); // Zero out ones where n < iterations													
-				_n = _mm256_add_epi64(_n, _c); // n++ Increase all n
-				if (_mm256_movemask_pd(_mm256_castsi256_pd(_mask2)) > 0)
-					goto repeat;
+	// 	for (y = pix_tl.y; y < pix_br.y; y++)
+	// 	{
+	// 		// Reset x_position
+	// 		_a = _mm256_set1_pd(frac_tl.x);
+	// 		_x_pos = _mm256_add_pd(_a, _x_pos_offsets);
 
-				pFractal[y_offset + x + 0] = int(_n.m256i_i64[3]);
-				pFractal[y_offset + x + 1] = int(_n.m256i_i64[2]);
-				pFractal[y_offset + x + 2] = int(_n.m256i_i64[1]);
-				pFractal[y_offset + x + 3] = int(_n.m256i_i64[0]);
-				_x_pos = _mm256_add_pd(_x_pos, _x_jump);
-			}
+	// 		_ci = _mm256_set1_pd(y_pos);
 
-			y_pos += y_scale;
-			y_offset += row_size;
-		}
-	}
-
-	// Method 5) - Spawn threads that use AVX method above
-	void CreateFractalThreads(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
-	{
-		int nSectionWidth = (pix_br.x - pix_tl.x) / nMaxThreads;
-		double dFractalWidth = (frac_br.x - frac_tl.x) / double(nMaxThreads);
-
-		std::thread t[nMaxThreads];
-
-		for (size_t i = 0; i < nMaxThreads; i++)
-			t[i] = std::thread(&olcFractalExplorer::CreateFractalIntrinsics, this,
-				olc::vi2d(pix_tl.x + nSectionWidth * (i), pix_tl.y),
-				olc::vi2d(pix_tl.x + nSectionWidth * (i + 1), pix_br.y),
-				olc::vd2d(frac_tl.x + dFractalWidth * double(i), frac_tl.y),
-				olc::vd2d(frac_tl.x + dFractalWidth * double(i + 1), frac_br.y),
-				iterations);
-
-		for (size_t i = 0; i < nMaxThreads; i++)
-			t[i].join();
-
-	}
+	// 		for (x = pix_tl.x; x < pix_br.x; x += 4)
+	// 		{
+	// 			_cr = _x_pos;
+	// 			_zr = _mm256_setzero_pd();
+	// 			_zi = _mm256_setzero_pd();
+	// 			_n = _mm256_setzero_si256();
 
 
-	// Method 6) - Threadpool, keep threads alive and reuse them, reducing setup overhead
-	struct WorkerThread
-	{
-		olc::vi2d pix_tl = { 0,0 };
-		olc::vi2d pix_br = { 0,0 };
-		olc::vd2d frac_tl = { 0,0 };
-		olc::vd2d frac_br = { 0,0 };
-		int iterations = 0;
-		std::condition_variable cvStart;
-		bool alive = true;
-		std::mutex mux;
-		int screen_width = 0;
-		int* fractal = nullptr;
+	// 		repeat:
+	// 			_zr2 = _mm256_mul_pd(_zr, _zr);
+	// 			_zi2 = _mm256_mul_pd(_zi, _zi);
+	// 			_a = _mm256_sub_pd(_zr2, _zi2);
+	// 			_a = _mm256_add_pd(_a, _cr);
+	// 			_b = _mm256_mul_pd(_zr, _zi);
+	// 			_b = _mm256_fmadd_pd(_b, _two, _ci);
+	// 			_zr = _a;
+	// 			_zi = _b;
+	// 			_a = _mm256_add_pd(_zr2, _zi2);
+	// 			_mask1 = _mm256_cmp_pd(_a, _four, _CMP_LT_OQ);
+	// 			_mask2 = _mm256_cmpgt_epi64(_iterations, _n);
+	// 			_mask2 = _mm256_and_si256(_mask2, _mm256_castpd_si256(_mask1));
+	// 			_c = _mm256_and_si256(_one, _mask2); // Zero out ones where n < iterations													
+	// 			_n = _mm256_add_epi64(_n, _c); // n++ Increase all n
+	// 			if (_mm256_movemask_pd(_mm256_castsi256_pd(_mask2)) > 0)
+	// 				goto repeat;
 
-		std::thread thread;
+	// 			pFractal[y_offset + x + 0] = int(_n.m256i_i64[3]);
+	// 			pFractal[y_offset + x + 1] = int(_n.m256i_i64[2]);
+	// 			pFractal[y_offset + x + 2] = int(_n.m256i_i64[1]);
+	// 			pFractal[y_offset + x + 3] = int(_n.m256i_i64[0]);
+	// 			_x_pos = _mm256_add_pd(_x_pos, _x_jump);
+	// 		}
 
-		void Start(const olc::vi2d& ptl, const olc::vi2d& pbr, const olc::vd2d& ftl, const olc::vd2d& fbr, const int it)
-		{
-			pix_tl = ptl;
-			pix_br = pbr;
-			frac_tl = ftl;
-			frac_br = fbr;
-			iterations = it;
-			std::unique_lock<std::mutex> lm(mux);
-			cvStart.notify_one();
-		}
+	// 		y_pos += y_scale;
+	// 		y_offset += row_size;
+	// 	}
+	// }
 
-		void CreateFractal()
-		{
-			while (alive)
-			{
-				std::unique_lock<std::mutex> lm(mux);
-				cvStart.wait(lm);
+	// // Method 5) - Spawn threads that use AVX method above
+	// void CreateFractalThreads(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
+	// {
+	// 	int nSectionWidth = (pix_br.x - pix_tl.x) / nMaxThreads;
+	// 	double dFractalWidth = (frac_br.x - frac_tl.x) / double(nMaxThreads);
 
-				double x_scale = (frac_br.x - frac_tl.x) / (double(pix_br.x) - double(pix_tl.x));
-				double y_scale = (frac_br.y - frac_tl.y) / (double(pix_br.y) - double(pix_tl.y));
+	// 	std::thread t[nMaxThreads];
 
-				double y_pos = frac_tl.y;
+	// 	for (size_t i = 0; i < nMaxThreads; i++)
+	// 		t[i] = std::thread(&olcFractalExplorer::CreateFractalIntrinsics, this,
+	// 			olc::vi2d(pix_tl.x + nSectionWidth * (i), pix_tl.y),
+	// 			olc::vi2d(pix_tl.x + nSectionWidth * (i + 1), pix_br.y),
+	// 			olc::vd2d(frac_tl.x + dFractalWidth * double(i), frac_tl.y),
+	// 			olc::vd2d(frac_tl.x + dFractalWidth * double(i + 1), frac_br.y),
+	// 			iterations);
 
-				int y_offset = 0;
-				int row_size = screen_width;
+	// 	for (size_t i = 0; i < nMaxThreads; i++)
+	// 		t[i].join();
 
-				int x, y;
-
-				__m256d _a, _b, _two, _four, _mask1;
-				__m256d _zr, _zi, _zr2, _zi2, _cr, _ci;
-				__m256d _x_pos_offsets, _x_pos, _x_scale, _x_jump;
-				__m256i _one, _c, _n, _iterations, _mask2;
-
-				_one = _mm256_set1_epi64x(1);
-				_two = _mm256_set1_pd(2.0);
-				_four = _mm256_set1_pd(4.0);
-				_iterations = _mm256_set1_epi64x(iterations);
-
-				_x_scale = _mm256_set1_pd(x_scale);
-				_x_jump = _mm256_set1_pd(x_scale * 4);
-				_x_pos_offsets = _mm256_set_pd(0, 1, 2, 3);
-				_x_pos_offsets = _mm256_mul_pd(_x_pos_offsets, _x_scale);
+	// }
 
 
-				for (y = pix_tl.y; y < pix_br.y; y++)
-				{
-					// Reset x_position
-					_a = _mm256_set1_pd(frac_tl.x);
-					_x_pos = _mm256_add_pd(_a, _x_pos_offsets);
+	// // Method 6) - Threadpool, keep threads alive and reuse them, reducing setup overhead
+	// struct WorkerThread
+	// {
+	// 	olc::vi2d pix_tl = { 0,0 };
+	// 	olc::vi2d pix_br = { 0,0 };
+	// 	olc::vd2d frac_tl = { 0,0 };
+	// 	olc::vd2d frac_br = { 0,0 };
+	// 	int iterations = 0;
+	// 	std::condition_variable cvStart;
+	// 	bool alive = true;
+	// 	std::mutex mux;
+	// 	int screen_width = 0;
+	// 	int* fractal = nullptr;
 
-					_ci = _mm256_set1_pd(y_pos);
+	// 	std::thread thread;
 
-					for (x = pix_tl.x; x < pix_br.x; x += 4)
-					{
-						_cr = _x_pos;
-						_zr = _mm256_setzero_pd();
-						_zi = _mm256_setzero_pd();
-						_n = _mm256_setzero_si256();
+	// 	void Start(const olc::vi2d& ptl, const olc::vi2d& pbr, const olc::vd2d& ftl, const olc::vd2d& fbr, const int it)
+	// 	{
+	// 		pix_tl = ptl;
+	// 		pix_br = pbr;
+	// 		frac_tl = ftl;
+	// 		frac_br = fbr;
+	// 		iterations = it;
+	// 		std::unique_lock<std::mutex> lm(mux);
+	// 		cvStart.notify_one();
+	// 	}
 
-					repeat:
-						_zr2 = _mm256_mul_pd(_zr, _zr);
-						_zi2 = _mm256_mul_pd(_zi, _zi);
-						_a = _mm256_sub_pd(_zr2, _zi2);
-						_a = _mm256_add_pd(_a, _cr);
-						_b = _mm256_mul_pd(_zr, _zi);
-						_b = _mm256_fmadd_pd(_b, _two, _ci);
-						_zr = _a;
-						_zi = _b;
-						_a = _mm256_add_pd(_zr2, _zi2);
-						_mask1 = _mm256_cmp_pd(_a, _four, _CMP_LT_OQ);
-						_mask2 = _mm256_cmpgt_epi64(_iterations, _n);
-						_mask2 = _mm256_and_si256(_mask2, _mm256_castpd_si256(_mask1));
-						_c = _mm256_and_si256(_one, _mask2); // Zero out ones where n < iterations													
-						_n = _mm256_add_epi64(_n, _c); // n++ Increase all n
-						if (_mm256_movemask_pd(_mm256_castsi256_pd(_mask2)) > 0)
-							goto repeat;
+	// 	void CreateFractal()
+	// 	{
+	// 		while (alive)
+	// 		{
+	// 			std::unique_lock<std::mutex> lm(mux);
+	// 			cvStart.wait(lm);
 
-						fractal[y_offset + x + 0] = int(_n.m256i_i64[3]);
-						fractal[y_offset + x + 1] = int(_n.m256i_i64[2]);
-						fractal[y_offset + x + 2] = int(_n.m256i_i64[1]);
-						fractal[y_offset + x + 3] = int(_n.m256i_i64[0]);
-						_x_pos = _mm256_add_pd(_x_pos, _x_jump);
-					}
+	// 			double x_scale = (frac_br.x - frac_tl.x) / (double(pix_br.x) - double(pix_tl.x));
+	// 			double y_scale = (frac_br.y - frac_tl.y) / (double(pix_br.y) - double(pix_tl.y));
 
-					y_pos += y_scale;
-					y_offset += row_size;
-				}
-				nWorkerComplete++;
-			}
-		}
-	};
+	// 			double y_pos = frac_tl.y;
+
+	// 			int y_offset = 0;
+	// 			int row_size = screen_width;
+
+	// 			int x, y;
+
+	// 			__m256d _a, _b, _two, _four, _mask1;
+	// 			__m256d _zr, _zi, _zr2, _zi2, _cr, _ci;
+	// 			__m256d _x_pos_offsets, _x_pos, _x_scale, _x_jump;
+	// 			__m256i _one, _c, _n, _iterations, _mask2;
+
+	// 			_one = _mm256_set1_epi64x(1);
+	// 			_two = _mm256_set1_pd(2.0);
+	// 			_four = _mm256_set1_pd(4.0);
+	// 			_iterations = _mm256_set1_epi64x(iterations);
+
+	// 			_x_scale = _mm256_set1_pd(x_scale);
+	// 			_x_jump = _mm256_set1_pd(x_scale * 4);
+	// 			_x_pos_offsets = _mm256_set_pd(0, 1, 2, 3);
+	// 			_x_pos_offsets = _mm256_mul_pd(_x_pos_offsets, _x_scale);
+
+
+	// 			for (y = pix_tl.y; y < pix_br.y; y++)
+	// 			{
+	// 				// Reset x_position
+	// 				_a = _mm256_set1_pd(frac_tl.x);
+	// 				_x_pos = _mm256_add_pd(_a, _x_pos_offsets);
+
+	// 				_ci = _mm256_set1_pd(y_pos);
+
+	// 				for (x = pix_tl.x; x < pix_br.x; x += 4)
+	// 				{
+	// 					_cr = _x_pos;
+	// 					_zr = _mm256_setzero_pd();
+	// 					_zi = _mm256_setzero_pd();
+	// 					_n = _mm256_setzero_si256();
+
+	// 				repeat:
+	// 					_zr2 = _mm256_mul_pd(_zr, _zr);
+	// 					_zi2 = _mm256_mul_pd(_zi, _zi);
+	// 					_a = _mm256_sub_pd(_zr2, _zi2);
+	// 					_a = _mm256_add_pd(_a, _cr);
+	// 					_b = _mm256_mul_pd(_zr, _zi);
+	// 					_b = _mm256_fmadd_pd(_b, _two, _ci);
+	// 					_zr = _a;
+	// 					_zi = _b;
+	// 					_a = _mm256_add_pd(_zr2, _zi2);
+	// 					_mask1 = _mm256_cmp_pd(_a, _four, _CMP_LT_OQ);
+	// 					_mask2 = _mm256_cmpgt_epi64(_iterations, _n);
+	// 					_mask2 = _mm256_and_si256(_mask2, _mm256_castpd_si256(_mask1));
+	// 					_c = _mm256_and_si256(_one, _mask2); // Zero out ones where n < iterations													
+	// 					_n = _mm256_add_epi64(_n, _c); // n++ Increase all n
+	// 					if (_mm256_movemask_pd(_mm256_castsi256_pd(_mask2)) > 0)
+	// 						goto repeat;
+
+	// 					fractal[y_offset + x + 0] = int(_n.m256i_i64[3]);
+	// 					fractal[y_offset + x + 1] = int(_n.m256i_i64[2]);
+	// 					fractal[y_offset + x + 2] = int(_n.m256i_i64[1]);
+	// 					fractal[y_offset + x + 3] = int(_n.m256i_i64[0]);
+	// 					_x_pos = _mm256_add_pd(_x_pos, _x_jump);
+	// 				}
+
+	// 				y_pos += y_scale;
+	// 				y_offset += row_size;
+	// 			}
+	// 			nWorkerComplete++;
+	// 		}
+	// 	}
+	// };
 
 	WorkerThread workers[nMaxThreads];
 	static std::atomic<int> nWorkerComplete;
@@ -521,9 +521,9 @@ public:
 		case 0: CreateFractalBasic(pix_tl, pix_br, frac_tl, frac_br, nIterations); break;
 		case 1: CreateFractalPreCalculate(pix_tl, pix_br, frac_tl, frac_br, nIterations); break;
 		case 2: CreateFractalNoComplex(pix_tl, pix_br, frac_tl, frac_br, nIterations); break;
-		case 3: CreateFractalIntrinsics(pix_tl, pix_br, frac_tl, frac_br, nIterations); break;
-		case 4: CreateFractalThreads(pix_tl, pix_br, frac_tl, frac_br, nIterations); break;
-		case 5: CreateFractalThreadPool(pix_tl, pix_br, frac_tl, frac_br, nIterations); break;
+		// case 3: CreateFractalIntrinsics(pix_tl, pix_br, frac_tl, frac_br, nIterations); break;
+		// case 4: CreateFractalThreads(pix_tl, pix_br, frac_tl, frac_br, nIterations); break;
+		// case 5: CreateFractalThreadPool(pix_tl, pix_br, frac_tl, frac_br, nIterations); break;
 		}
 
 		// STOP TIMING
@@ -550,9 +550,9 @@ public:
 		case 0: DrawString(0, 0, "1) Naive Method", olc::WHITE, 3); break;
 		case 1: DrawString(0, 0, "2) Precalculate Method", olc::WHITE, 3); break;
 		case 2: DrawString(0, 0, "3) Hand-code Maths Method", olc::WHITE, 3); break;
-		case 3: DrawString(0, 0, "4) Vector Extensions (AVX2) Method", olc::WHITE, 3); break;
-		case 4: DrawString(0, 0, "5) Threads Method", olc::WHITE, 3); break;
-		case 5: DrawString(0, 0, "6) ThreadPool Method", olc::WHITE, 3); break;
+		// case 3: DrawString(0, 0, "4) Vector Extensions (AVX2) Method", olc::WHITE, 3); break;
+		// case 4: DrawString(0, 0, "5) Threads Method", olc::WHITE, 3); break;
+		// case 5: DrawString(0, 0, "6) ThreadPool Method", olc::WHITE, 3); break;
 		}
 
 		DrawString(0, 30, "Time Taken: " + std::to_string(elapsedTime.count()) + "s", olc::WHITE, 3);
